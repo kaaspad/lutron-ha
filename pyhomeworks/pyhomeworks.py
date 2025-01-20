@@ -26,6 +26,7 @@ def _p_button(arg):     return int(arg)
 def _p_enabled(arg):    return arg == "enabled"
 def _p_level(arg):      return int(arg)
 def _p_ledstate(arg):   return [int(num) for num in arg]
+def _p_cco_state(arg): return int(arg)
 
 def _norm(x): return (x, _p_address, _p_button)
 
@@ -57,6 +58,8 @@ ACTIONS = {
     "KLS":      (HW_KEYPAD_LED_CHANGED, _p_address, _p_ledstate),
     "DL":       (HW_LIGHT_CHANGED, _p_address, _p_level),
     "KES":      (HW_KEYPAD_ENABLE_CHANGED, _p_address, _p_enabled),
+    "CCOOPEN":  (HW_CCO_CHANGED, _p_address, _p_cco_state),
+    "CCOCLOSE": (HW_CCO_CHANGED, _p_address, _p_cco_state),
 }
 
 IGNORED = {
@@ -247,3 +250,4 @@ class Homeworks(Thread):
         self._send("GSMON")  # Monitor GRAFIKEYE scenes
         self._send("DLMON")  # Monitor dimmer levels
         self._send("KLMON")  # Monitor keypad LED states
+        self._send("CCOMON")  # Monitor CCO states
