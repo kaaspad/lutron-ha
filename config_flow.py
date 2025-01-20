@@ -107,25 +107,8 @@ async def validate_add_controller(
     handler: ConfigFlow | SchemaOptionsFlowHandler, user_input: dict[str, Any]
 ) -> dict[str, Any]:
     """Validate controller setup."""
-    # TODO: Check not only password
     user_input[CONF_CONTROLLER_ID] = slugify(user_input[CONF_NAME])
-    user_input[CONF_PORT] = int(user_input[CONF_PORT])
-    try:
-        handler._async_abort_entries_match(  # noqa: SLF001
-            {CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]}
-        )
-    except AbortFlow as err:
-        raise SchemaFlowError("duplicated_host_port") from err
-
-    try:
-        handler._async_abort_entries_match(  # noqa: SLF001
-            {CONF_CONTROLLER_ID: user_input[CONF_CONTROLLER_ID]}
-        )
-    except AbortFlow as err:
-        raise SchemaFlowError("duplicated_controller_id") from err
-
-    await _try_connection(user_input)
-
+    user_input |= {CONF_DIMMERS: [], CONF_KEYPADS: [], CONF_CCOS: []}
     return user_input
 
 
@@ -178,6 +161,8 @@ def _validate_address(handler: SchemaCommonFlowHandler, addr: str) -> None:
         raise SchemaFlowError("invalid_addr") from err
 
     for _key in (CONF_DIMMERS, CONF_KEYPADS, CONF_CCOS):
+        if _key not in handler.options:
+            handler.options[_key] = []
         items: list[dict[str, Any]] = handler.options[_key]
 
         for item in items:
@@ -668,7 +653,6 @@ class HomeworksConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any]
     ) -> dict[str, Any]:
         """Validate controller setup."""
-        # TODO: Check not only password
         user_input[CONF_PORT] = int(user_input[CONF_PORT])
 
         our_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])

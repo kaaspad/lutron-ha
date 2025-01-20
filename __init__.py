@@ -70,7 +70,7 @@ class HomeworksData:
     controller: Homeworks
     controller_id: str
     keypads: dict[str, HomeworksKeypad]
-    ccos: dict[str, dict[str, Any]]
+    ccos: dict[str, dict[str, Any]] = {}
 
 
 @callback
@@ -189,6 +189,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = HomeworksData(
         controller, controller_id, keypads, ccos
     )
+    
+    # Initialize empty CCO list if not present
+    if CONF_CCOS not in entry.options:
+        entry.options[CONF_CCOS] = []
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(update_listener))

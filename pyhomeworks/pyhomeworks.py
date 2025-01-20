@@ -156,12 +156,12 @@ class Homeworks(Thread):
     def cco_open(self, addr):
         """Open a CCO contact."""
         base_addr, output = addr.rsplit(":", 1)
-        self._send(f"CCOOPEN, {base_addr}], {output}")
+        self._send(f"CCOOPEN, {base_addr}, {output}")
 
     def cco_close(self, addr):
         """Close a CCO contact."""
         base_addr, output = addr.rsplit(":", 1)
-        self._send(f"CCOCLOSE, {base_addr}], {output}")
+        self._send(f"CCOCLOSE, {base_addr}, {output}")
 
     def run(self):
         """Read and dispatch messages from the controller."""
