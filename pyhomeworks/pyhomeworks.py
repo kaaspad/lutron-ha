@@ -38,6 +38,7 @@ HW_BUTTON_RELEASED = "button_released"
 HW_KEYPAD_ENABLE_CHANGED = "keypad_enable_changed"
 HW_KEYPAD_LED_CHANGED = "keypad_led_changed"
 HW_LIGHT_CHANGED = "light_changed"
+HW_CCO_CHANGED = "cco_changed"
 HW_LOGIN_INCORRECT = "login_incorrect"
 
 ACTIONS = {
@@ -148,6 +149,14 @@ class Homeworks(Thread):
     def request_dimmer_level(self, addr):
         """Request the controller to return brightness."""
         self._send(f"RDL, {addr}")
+
+    def cco_open(self, addr):
+        """Open a CCO contact."""
+        self._send(f"CCOOPEN, {addr}")
+
+    def cco_close(self, addr):
+        """Close a CCO contact."""
+        self._send(f"CCOCLOSE, {addr}")
 
     def run(self):
         """Read and dispatch messages from the controller."""

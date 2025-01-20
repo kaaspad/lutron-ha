@@ -30,18 +30,19 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import slugify
 
-from .const import CONF_ADDR, CONF_CONTROLLER_ID, CONF_KEYPADS, DOMAIN
+from .const import CONF_ADDR, CONF_CONTROLLER_ID, CONF_KEYPADS, CONF_CCOS, DOMAIN
 from .pyhomeworks import exceptions as hw_exceptions
 from .pyhomeworks.pyhomeworks import (
     HW_BUTTON_PRESSED,
     HW_BUTTON_RELEASED,
     HW_LOGIN_INCORRECT,
+    HW_CCO_CHANGED,
     Homeworks,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.LIGHT]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.LIGHT, Platform.SWITCH]
 
 CONF_COMMAND = "command"
 
@@ -69,6 +70,7 @@ class HomeworksData:
     controller: Homeworks
     controller_id: str
     keypads: dict[str, HomeworksKeypad]
+    ccos: dict[str, dict[str, Any]]
 
 
 @callback
@@ -178,8 +180,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         name = key_config[CONF_NAME]
         keypads[addr] = HomeworksKeypad(hass, controller, controller_id, addr, name)
 
+    ccos: dict[str, dict[str, Any]] = {}
+    for cco_config in config.get(CONF_CCOS, []):
+        addr = cco_config[CONF_ADDR]
+        name = cco_config[CONF_NAME]
+        ccos[addr] = {"name": name}
+
     hass.data[DOMAIN][entry.entry_id] = HomeworksData(
-        controller, controller_id, keypads
+        controller, controller_id, keypads, ccos
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -280,6 +288,8 @@ class HomeworksKeypad:
             event = EVENT_BUTTON_PRESS
         elif msg_type == HW_BUTTON_RELEASED:
             event = EVENT_BUTTON_RELEASE
+        elif msg_type == HW_CCO_CHANGED:
+            event = "homeworks_cco_changed"
         else:
             return
         data = {CONF_ID: self._id, CONF_NAME: self._name, "button": values[1]}
