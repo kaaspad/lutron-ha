@@ -19,7 +19,7 @@
                 "description": "Lutron Homeworks is no longer configured through configuration.yaml.\n\nPlease fill in the form to import the existing configuration to the UI."
             },
             "import_finish": {
-                "description": "The existing YAML configuration has succesfully been imported.\n\nYou can now remove the `homeworks` configuration from your configuration.yaml file."
+                "description": "The existing YAML configuration has successfully been imported.\n\nYou can now remove the `homeworks` configuration from your configuration.yaml file."
             },
             "reconfigure": {
                 "data": {
@@ -48,6 +48,38 @@
                     "username": "Optional username, leave blank if your system does not need login credentials"
                 },
                 "description": "Add a Lutron Homeworks controller"
+            },
+            "add_cco": {
+                "data": {
+                    "addr": "Address",
+                    "name": "Name"
+                },
+                "data_description": {
+                    "addr": "CCO address, must be formatted as `[##:##:##:##]`"
+                },
+                "title": "Add CCO"
+            },
+            "add_keypad": {
+                "data": {
+                    "addr": "Address",
+                    "name": "Name"
+                },
+                "data_description": {
+                    "addr": "Keypad address, must be formatted as `[##:##:##:##]`"
+                },
+                "title": "Add keypad"
+            },
+            "add_light": {
+                "data": {
+                    "addr": "Address",
+                    "name": "Name",
+                    "rate": "Fade rate"
+                },
+                "data_description": {
+                    "addr": "Keypad address, must be formatted as `[##:##:##:##]`",
+                    "rate": "Time in seconds for the light to transition to a new brightness level"
+                },
+                "title": "Add light"
             }
         }
     },
@@ -76,28 +108,6 @@
                     "release_delay": "Time between press and release, set to 0 to only press"
                 },
                 "title": "Add keypad"
-            },
-            "add_keypad": {
-                "data": {
-                    "addr": "Address",
-                    "name": "Name"
-                },
-                "data_description": {
-                    "addr": "Keypad address, must be formatted as `[##:##:##:##]`"
-                },
-                "title": "Add keypad"
-            },
-            "add_light": {
-                "data": {
-                    "addr": "Address",
-                    "name": "Name",
-                    "rate": "Fade rate"
-                },
-                "data_description": {
-                    "addr": "Keypad address, must be formatted as `[##:##:##:##]`",
-                    "rate": "Time in seconds for the light to transition to a new brightness level"
-                },
-                "title": "Add light"
             },
             "edit_button": {
                 "data": {
@@ -131,8 +141,10 @@
                 "menu_options": {
                     "add_keypad": "Add keypad",
                     "add_light": "Add light",
+                    "add_cco": "Add CCO",
                     "remove_keypad": "Remove keypad",
                     "remove_light": "Remove light",
+                    "remove_cco": "Remove CCO",
                     "select_edit_keypad": "Configure keypad",
                     "select_edit_light": "Configure light"
                 }

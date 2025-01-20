@@ -11,6 +11,7 @@ import voluptuous as vol
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
 from homeassistant.const import (
     CONF_HOST,
@@ -18,6 +19,9 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PORT,
     CONF_USERNAME,
+    CONF_ADDR,
+    CONF_CONTROLLER_ID,
+    CONF_CCOS,
 )
 from homeassistant.core import async_get_hass, callback
 from homeassistant.data_entry_flow import AbortFlow
@@ -39,9 +43,6 @@ from homeassistant.util import slugify
 
 from . import DEFAULT_FADE_RATE, calculate_unique_id
 from .const import (
-    CONF_ADDR,
-    CONF_BUTTONS,
-    CONF_CONTROLLER_ID,
     CONF_DIMMERS,
     CONF_INDEX,
     CONF_KEYPADS,
@@ -53,6 +54,7 @@ from .const import (
     DEFAULT_KEYPAD_NAME,
     DEFAULT_LIGHT_NAME,
     DOMAIN,
+    CONF_CCOS,
 )
 from .pyhomeworks import exceptions as hw_exceptions
 from .pyhomeworks.pyhomeworks import Homeworks
@@ -97,7 +99,6 @@ BUTTON_EDIT: VolDictType = {
         ),
     ),
 }
-
 
 validate_addr = cv.matches_regex(r"\[(?:\d\d:){0,2}\d\d:\d\d:\d\d\]")
 
@@ -176,7 +177,7 @@ def _validate_address(handler: SchemaCommonFlowHandler, addr: str) -> None:
     except vol.Invalid as err:
         raise SchemaFlowError("invalid_addr") from err
 
-    for _key in (CONF_DIMMERS, CONF_KEYPADS):
+    for _key in (CONF_DIMMERS, CONF_KEYPADS, CONF_CCOS):
         items: list[dict[str, Any]] = handler.options[_key]
 
         for item in items:
@@ -235,6 +236,19 @@ async def validate_add_light(
     return {}
 
 
+async def validate_add_cco(
+    handler: SchemaCommonFlowHandler, user_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate CCO input."""
+    _validate_address(handler, user_input[CONF_ADDR])
+
+    # Standard behavior is to merge the result with the options.
+    # In this case, we want to add a sub-item so we update the options directly.
+    items = handler.options[CONF_CCOS]
+    items.append(user_input)
+    return {}
+
+
 async def get_select_button_schema(handler: SchemaCommonFlowHandler) -> vol.Schema:
     """Return schema for selecting a button."""
     keypad = handler.flow_state["_idx"]
@@ -280,6 +294,20 @@ async def get_select_light_schema(handler: SchemaCommonFlowHandler) -> vol.Schem
     )
 
 
+async def get_select_cco_schema(handler: SchemaCommonFlowHandler) -> vol.Schema:
+    """Return schema for selecting a CCO."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_INDEX): vol.In(
+                {
+                    str(index): f"{config[CONF_NAME]} ({config[CONF_ADDR]})"
+                    for index, config in enumerate(handler.options[CONF_CCOS])
+                },
+            )
+        }
+    )
+
+
 async def validate_select_button(
     handler: SchemaCommonFlowHandler, user_input: dict[str, Any]
 ) -> dict[str, Any]:
@@ -293,6 +321,14 @@ async def validate_select_keypad_light(
 ) -> dict[str, Any]:
     """Store keypad or light index in flow state."""
     handler.flow_state["_idx"] = int(user_input[CONF_INDEX])
+    return {}
+
+
+async def validate_select_cco(
+    handler: SchemaCommonFlowHandler, user_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Store CCO index in flow state."""
+    handler.flow_state["_cco_idx"] = int(user_input[CONF_INDEX])
     return {}
 
 
@@ -311,6 +347,14 @@ async def get_edit_light_suggested_values(
     """Return suggested values for light editing."""
     idx: int = handler.flow_state["_idx"]
     return dict(handler.options[CONF_DIMMERS][idx])
+
+
+async def get_edit_cco_suggested_values(
+    handler: SchemaCommonFlowHandler,
+) -> dict[str, Any]:
+    """Return suggested values for CCO editing."""
+    idx: int = handler.flow_state["_cco_idx"]
+    return dict(handler.options[CONF_CCOS][idx])
 
 
 async def validate_button_edit(
@@ -334,6 +378,17 @@ async def validate_light_edit(
     # In this case, we want to add a sub-item so we update the options directly.
     idx: int = handler.flow_state["_idx"]
     handler.options[CONF_DIMMERS][idx].update(user_input)
+    return {}
+
+
+async def validate_cco_edit(
+    handler: SchemaCommonFlowHandler, user_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Update edited CCO."""
+    # Standard behavior is to merge the result with the options.
+    # In this case, we want to add a sub-item so we update the options directly.
+    idx: int = handler.flow_state["_cco_idx"]
+    handler.options[CONF_CCOS][idx].update(user_input)
     return {}
 
 
@@ -363,6 +418,22 @@ async def get_remove_keypad_light_schema(
                 {
                     str(index): f"{config[CONF_NAME]} ({config[CONF_ADDR]})"
                     for index, config in enumerate(handler.options[key])
+                },
+            )
+        }
+    )
+
+
+async def get_remove_cco_schema(
+    handler: SchemaCommonFlowHandler
+) -> vol.Schema:
+    """Return schema for CCO removal."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_INDEX): cv.multi_select(
+                {
+                    str(index): f"{config[CONF_NAME]} ({config[CONF_ADDR]})"
+                    for index, config in enumerate(handler.options[CONF_CCOS])
                 },
             )
         }
@@ -429,6 +500,32 @@ async def validate_remove_keypad_light(
     return {}
 
 
+async def validate_remove_cco(
+    handler: SchemaCommonFlowHandler, user_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate remove CCO."""
+    removed_indexes: set[str] = set(user_input[CONF_INDEX])
+
+    # Standard behavior is to merge the result with the options.
+    # In this case, we want to remove sub-items so we update the options directly.
+    entity_registry = er.async_get(handler.parent_handler.hass)
+    items: list[dict[str, Any]] = []
+    item: dict[str, Any]
+    for index, item in enumerate(handler.options[CONF_CCOS]):
+        if str(index) not in removed_indexes:
+            items.append(item)
+        if entity_id := entity_registry.async_get_entity_id(
+            SWITCH_DOMAIN,
+            DOMAIN,
+            calculate_unique_id(
+                handler.options[CONF_CONTROLLER_ID], item[CONF_ADDR], 0
+            ),
+        ):
+            entity_registry.async_remove(entity_id)
+    handler.options[CONF_CCOS] = items
+    return {}
+
+
 DATA_SCHEMA_ADD_CONTROLLER = vol.Schema(
     {
         vol.Required(
@@ -467,17 +564,34 @@ DATA_SCHEMA_ADD_BUTTON = vol.Schema(
 )
 DATA_SCHEMA_EDIT_BUTTON = vol.Schema(BUTTON_EDIT)
 DATA_SCHEMA_EDIT_LIGHT = vol.Schema(LIGHT_EDIT)
+DATA_SCHEMA_ADD_CCO = vol.Schema(
+    {
+        vol.Optional(CONF_NAME, default="Homeworks CCO"): TextSelector(),
+        vol.Required(CONF_ADDR): TextSelector(),
+    }
+)
+DATA_SCHEMA_EDIT_CCO = vol.Schema({})
 
 OPTIONS_FLOW = {
     "init": SchemaFlowMenuStep(
         [
             "add_keypad",
+            "add_cco",
             "select_edit_keypad",
             "remove_keypad",
             "add_light",
             "select_edit_light",
             "remove_light",
+            "remove_cco",
         ]
+    ),
+    "add_cco": SchemaFlowFormStep(
+        DATA_SCHEMA_ADD_CCO,
+        validate_user_input=validate_add_cco,
+    ),
+    "remove_cco": SchemaFlowFormStep(
+        get_remove_cco_schema,
+        validate_user_input=validate_remove_cco,
     ),
     "add_keypad": SchemaFlowFormStep(
         DATA_SCHEMA_ADD_KEYPAD,
@@ -629,7 +743,7 @@ class HomeworksConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     {CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]}
                 )
                 name = user_input.pop(CONF_NAME)
-                user_input |= {CONF_DIMMERS: [], CONF_KEYPADS: []}
+                user_input |= {CONF_DIMMERS: [], CONF_KEYPADS: [], CONF_CCOS: []}
                 return self.async_create_entry(title=name, data={}, options=user_input)
 
         return self.async_show_form(
