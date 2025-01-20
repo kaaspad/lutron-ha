@@ -58,8 +58,8 @@ ACTIONS = {
     "KLS":      (HW_KEYPAD_LED_CHANGED, _p_address, _p_ledstate),
     "DL":       (HW_LIGHT_CHANGED, _p_address, _p_level),
     "KES":      (HW_KEYPAD_ENABLE_CHANGED, _p_address, _p_enabled),
-    "CCOOPEN":  (HW_CCO_CHANGED, _p_address, _p_cco_state),
-    "CCOCLOSE": (HW_CCO_CHANGED, _p_address, _p_cco_state),
+    "CCOOPEN":  (HW_CCO_CHANGED, _p_address, lambda x: "OPEN"),
+    "CCOCLOSE": (HW_CCO_CHANGED, _p_address, lambda x: "CLOSED"),
 }
 
 IGNORED = {

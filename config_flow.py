@@ -54,6 +54,7 @@ from .const import (
     DEFAULT_KEYPAD_NAME,
     DEFAULT_LIGHT_NAME,
     DOMAIN,
+    CONF_CCOS,
 )
 from .pyhomeworks import exceptions as hw_exceptions
 from .pyhomeworks.pyhomeworks import Homeworks
